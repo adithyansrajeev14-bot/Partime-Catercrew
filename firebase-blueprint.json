@@ -1,0 +1,105 @@
+{
+  "entities": {
+    "users": {
+      "title": "User",
+      "description": "User account records with system roles",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["worker", "company", "admin"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "workers": {
+      "title": "Worker Profile",
+      "description": "Catering and hospitality workers",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "age": { "type": "number" },
+        "phone": { "type": "string" },
+        "location": { "type": "string" },
+        "height": { "type": "string" },
+        "experience": { "type": "string" },
+        "skills": { "type": "array", "items": { "type": "string" } },
+        "availability": { "type": "string" },
+        "expectedWage": { "type": "number" },
+        "profilePhotoUrl": { "type": "string" }
+      },
+      "required": ["uid", "name", "phone", "location"]
+    },
+    "companies": {
+      "title": "Company Profile",
+      "description": "Event and catering management companies",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "companyName": { "type": "string" },
+        "contactPerson": { "type": "string" },
+        "phone": { "type": "string" },
+        "location": { "type": "string" },
+        "address": { "type": "string" },
+        "serviceType": { "type": "string" },
+        "experience": { "type": "string" },
+        "description": { "type": "string" },
+        "logoUrl": { "type": "string" }
+      },
+      "required": ["uid", "companyName", "contactPerson", "phone", "location"]
+    },
+    "jobs": {
+      "title": "Catering Job",
+      "description": "Event catering gigs and urgent vacancies",
+      "type": "object",
+      "properties": {
+        "jobId": { "type": "string" },
+        "companyId": { "type": "string" },
+        "companyName": { "type": "string" },
+        "companyPhone": { "type": "string" },
+        "title": { "type": "string" },
+        "eventType": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "location": { "type": "string" },
+        "venue": { "type": "string" },
+        "workersNeeded": { "type": "number" },
+        "isUrgent": { "type": "boolean" },
+        "normalWage": { "type": "number" },
+        "bonusWage": { "type": "number" },
+        "totalWage": { "type": "number" },
+        "dressCode": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["open", "filled", "cancelled"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["companyId", "companyName", "title", "eventType", "date", "time", "location", "totalWage"]
+    },
+    "applications": {
+      "title": "Job Application",
+      "description": "Application from a worker for a catering job",
+      "type": "object",
+      "properties": {
+        "applicationId": { "type": "string" },
+        "jobId": { "type": "string" },
+        "workerId": { "type": "string" },
+        "workerName": { "type": "string" },
+        "workerPhone": { "type": "string" },
+        "companyId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
+        "appliedAt": { "type": "string" }
+      },
+      "required": ["jobId", "workerId", "companyId", "status"]
+    },
+    "settings": {
+      "title": "Website Settings",
+      "description": "Branding and app configurations",
+      "type": "object",
+      "properties": {
+        "logoUrl": { "type": "string" },
+        "faviconUrl": { "type": "string" }
+      }
+    }
+  }
+}

@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.admin == true ||
+        request.auth.token.email == 'admin@catercrew.com' ||
+        request.auth.token.email == 'cellerforge@gmail.com'
+      );
+    }
+
+    // Users
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Workers profile
+    match /workers/{workerId} {
+      allow read: if true; // Public directory for hiring companies
+      allow create, update: if isOwner(workerId) || isAdmin();
+      allow delete: if isOwner(workerId) || isAdmin();
+    }
+
+    // Companies profile
+    match /companies/{companyId} {
+      allow read: if true; // Workers need to see company details
+      allow create, update: if isOwner(companyId) || isAdmin();
+      allow delete: if isOwner(companyId) || isAdmin();
+    }
+
+    // Jobs
+    match /jobs/{jobId} {
+      allow read: if true; // Public job feed
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && (
+        resource.data.companyId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // Applications
+    match /applications/{applicationId} {
+      allow read: if isAuthenticated() && (
+        resource.data.workerId == request.auth.uid ||
+        resource.data.companyId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        resource.data.companyId == request.auth.uid ||
+        resource.data.workerId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isAuthenticated() && (
+        resource.data.workerId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // Settings
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

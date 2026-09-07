@@ -1,0 +1,6 @@
+{
+  "name": "CaterCrew",
+  "description": "Mobile-first catering job marketplace connecting event companies with catering workers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
