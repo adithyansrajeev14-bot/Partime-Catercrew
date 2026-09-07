@@ -4,14 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { JobApplication, CateringJob } from '../lib/types';
-import { Briefcase, Calendar, Clock, MapPin, MessageCircle, AlertCircle, CheckCircle, Clock3, XCircle } from 'lucide-react';
+import { Briefcase, Calendar, Clock, MapPin, MessageCircle, AlertCircle, CheckCircle, Clock3, XCircle, Star } from 'lucide-react';
 
 interface WorkerApplicationsViewProps {
   workerId: string;
   onBrowseJobs: () => void;
+  onRateCompany?: (job: CateringJob, app: JobApplication) => void;
 }
 
-export function WorkerApplicationsView({ workerId, onBrowseJobs }: WorkerApplicationsViewProps) {
+export function WorkerApplicationsView({ workerId, onBrowseJobs, onRateCompany }: WorkerApplicationsViewProps) {
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [jobsMap, setJobsMap] = useState<Record<string, CateringJob>>({});
   const [loading, setLoading] = useState(true);
@@ -153,15 +154,28 @@ export function WorkerApplicationsView({ workerId, onBrowseJobs }: WorkerApplica
                     Applied on {new Date(app.appliedAt).toLocaleDateString()}
                   </span>
 
-                  <a
-                    href={waUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="py-1.5 px-3 rounded-xl bg-[#25D366]/10 text-[#128C7E] font-bold text-xs flex items-center gap-1 hover:bg-[#25D366]/20 transition"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5 fill-[#25D366]" />
-                    <span>Message Company</span>
-                  </a>
+                  <div className="flex items-center gap-2">
+                    {app.status === 'accepted' && onRateCompany && (
+                      <button
+                        type="button"
+                        onClick={() => job && onRateCompany(job, app)}
+                        className="py-1.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs flex items-center gap-1 transition"
+                      >
+                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                        <span>Rate Company</span>
+                      </button>
+                    )}
+
+                    <a
+                      href={waUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-1.5 px-3 rounded-xl bg-[#25D366]/10 text-[#128C7E] font-bold text-xs flex items-center gap-1 hover:bg-[#25D366]/20 transition"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5 fill-[#25D366]" />
+                      <span>Message Company</span>
+                    </a>
+                  </div>
                 </div>
               </div>
             );

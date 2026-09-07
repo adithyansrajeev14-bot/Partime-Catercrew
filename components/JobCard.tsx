@@ -14,7 +14,8 @@ import {
   ChevronDown,
   ChevronUp,
   Share2,
-  Sparkles
+  Sparkles,
+  Navigation
 } from 'lucide-react';
 import { CateringJob } from '../lib/types';
 
@@ -25,6 +26,7 @@ interface JobCardProps {
   isWorker: boolean;
   onRequireAuth: () => void;
   isApplying?: boolean;
+  onOpenMapsAgent?: (venue?: string, location?: string) => void;
 }
 
 export function JobCard({
@@ -34,6 +36,7 @@ export function JobCard({
   isWorker,
   onRequireAuth,
   isApplying = false,
+  onOpenMapsAgent,
 }: JobCardProps) {
   const [showFullDesc, setShowFullDesc] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -171,9 +174,13 @@ export function JobCard({
             <span className="font-semibold truncate">{job.time}</span>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-            <span className="truncate" title={`${job.venue}, ${job.location}`}>
+          <div
+            onClick={() => onOpenMapsAgent?.(job.venue, job.location)}
+            className="flex items-center gap-1.5 cursor-pointer group hover:text-[#00A651] transition"
+            title="Click to check live venue routes and directions on Google Maps"
+          >
+            <MapPin className="w-3.5 h-3.5 text-gray-400 group-hover:text-[#00A651] shrink-0" />
+            <span className="truncate underline decoration-dotted decoration-gray-300 group-hover:decoration-[#00A651]" title={`${job.venue}, ${job.location}`}>
               {job.venue || job.location}
             </span>
           </div>
@@ -267,6 +274,19 @@ export function JobCard({
                   <span>Apply Now</span>
                 </>
               )}
+            </button>
+          )}
+
+          {/* Maps / Route button */}
+          {onOpenMapsAgent && (
+            <button
+              type="button"
+              onClick={() => onOpenMapsAgent(job.venue, job.location)}
+              className="py-2.5 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs flex items-center justify-center gap-1 transition active:scale-[0.98] shrink-0"
+              title="View route, transit, and directions"
+            >
+              <Navigation className="w-4 h-4 text-[#00A651]" />
+              <span className="hidden sm:inline">Route</span>
             </button>
           )}
 

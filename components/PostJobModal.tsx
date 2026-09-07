@@ -20,6 +20,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { CateringJob, CompanyProfile } from '../lib/types';
 import confetti from 'canvas-confetti';
+import { dispatchUrgentJobNotification } from '../lib/fcm';
 
 interface PostJobModalProps {
   isOpen: boolean;
@@ -116,6 +117,13 @@ export function PostJobModal({
       };
 
       await setDoc(doc(db, 'jobs', jobId), newJob);
+
+      // If urgent vacancy, notify all available workers via push & in-app alerts
+      if (isUrgent) {
+        dispatchUrgentJobNotification(newJob).catch((e) =>
+          console.warn('Urgent notification warning:', e)
+        );
+      }
 
       // Trigger celebration confetti
       try {

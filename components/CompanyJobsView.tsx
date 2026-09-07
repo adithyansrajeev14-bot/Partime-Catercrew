@@ -16,7 +16,8 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  Sparkles
+  Sparkles,
+  Star
 } from 'lucide-react';
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -25,9 +26,10 @@ import { CateringJob, JobApplication } from '../lib/types';
 interface CompanyJobsViewProps {
   companyId: string;
   onOpenPostJob: () => void;
+  onRateWorker?: (job: CateringJob, app: JobApplication) => void;
 }
 
-export function CompanyJobsView({ companyId, onOpenPostJob }: CompanyJobsViewProps) {
+export function CompanyJobsView({ companyId, onOpenPostJob, onRateWorker }: CompanyJobsViewProps) {
   const [jobs, setJobs] = useState<CateringJob[]>([]);
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
@@ -287,6 +289,18 @@ export function CompanyJobsView({ companyId, onOpenPostJob }: CompanyJobsViewPro
                                   <MessageCircle className="w-4 h-4 fill-[#25D366]" />
                                   <span className="hidden sm:inline">WhatsApp</span>
                                 </a>
+
+                                {app.status === 'accepted' && onRateWorker && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onRateWorker(job, app)}
+                                    className="p-1.5 px-2.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 text-xs font-bold flex items-center gap-1 transition"
+                                    title="Rate and Review Worker"
+                                  >
+                                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                                    <span>Rate</span>
+                                  </button>
+                                )}
 
                                 {app.status !== 'accepted' && (
                                   <button

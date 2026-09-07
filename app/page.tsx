@@ -20,8 +20,10 @@ import {
   JobApplication,
   WorkerProfile,
   CompanyProfile,
-  WebsiteSettings
+  WebsiteSettings,
+  AppNotification
 } from '../lib/types';
+import { dispatchApplicationNotification, requestNotificationPermission } from '../lib/fcm';
 import { Header } from '../components/Header';
 import { OnboardingModal } from '../components/OnboardingModal';
 import { AuthModal } from '../components/AuthModal';
@@ -33,6 +35,9 @@ import { WorkerApplicationsView } from '../components/WorkerApplicationsView';
 import { WorkerProfileModal } from '../components/WorkerProfileModal';
 import { CompanyProfileModal } from '../components/CompanyProfileModal';
 import { AdminModal } from '../components/AdminModal';
+import { MapsAgentModal } from '../components/MapsAgentModal';
+import { RatingReviewModal } from '../components/RatingReviewModal';
+import { NotificationCenterModal } from '../components/NotificationCenterModal';
 import confetti from 'canvas-confetti';
 import {
   Search,
@@ -66,6 +71,25 @@ export default function Home() {
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [applyingJobId, setApplyingJobId] = useState<string | null>(null);
+
+  // Realtime Notifications
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+
+  // Maps Route Agent Modal
+  const [showMapsModal, setShowMapsModal] = useState(false);
+  const [mapsVenue, setMapsVenue] = useState('');
+  const [mapsLocation, setMapsLocation] = useState('');
+
+  // Rating & Review Modal
+  const [ratingModalData, setRatingModalData] = useState<{
+    isOpen: boolean;
+    jobId: string;
+    jobTitle: string;
+    targetUserId: string;
+    targetUserName: string;
+    targetUserRole: 'worker' | 'company';
+  } | null>(null);
 
   // Active View Tabs
   // Worker: 'feed' | 'applications'
@@ -135,6 +159,9 @@ export default function Home() {
           ]);
           if (wSnap.exists()) setWorkerProfile(wSnap.data() as WorkerProfile);
           if (cSnap.exists()) setCompanyProfile(cSnap.data() as CompanyProfile);
+
+          // Request FCM push notification permission
+          requestNotificationPermission(user.uid, currentRole).catch(() => {});
         } catch (e) {
           console.error('Error loading user profile:', e);
         }
@@ -145,7 +172,7 @@ export default function Home() {
     });
 
     return () => unsubscribeAuth();
-  }, []);
+  }, [currentRole]);
 
   // 4. Realtime listener for Jobs
   useEffect(() => {
@@ -185,12 +212,50 @@ export default function Home() {
     };
   }, [currentUser]);
 
+  // 6. Realtime listener for Notifications
+  useEffect(() => {
+    const unsubNotifs = onSnapshot(
+      collection(db, 'notifications'),
+      (snapshot) => {
+        const list: AppNotification[] = [];
+        snapshot.forEach((d) => {
+          const n = d.data() as AppNotification;
+          // Filter to notifications relevant to current user / role
+          const isForMe =
+            (currentUser && n.targetUserId === currentUser.uid) ||
+            n.targetRole === currentRole ||
+            n.targetRole === 'all' ||
+            !n.targetRole;
+
+          if (isForMe) {
+            list.push(n);
+          }
+        });
+        setNotifications(
+          list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+        );
+      },
+      (err) => {
+        console.warn('Notifications listener warning:', err);
+      }
+    );
+
+    return () => unsubNotifs();
+  }, [currentUser, currentRole]);
+
+  const unreadNotificationsCount = useMemo(() => {
+    return notifications.filter((n) => !n.isRead).length;
+  }, [notifications]);
+
   // Handle Role Change
   const handleRoleChange = (newRole: UserRole) => {
     setCurrentRole(newRole);
     localStorage.setItem('catercrew_role', newRole);
     setActiveTab('feed');
     showToast(`Switched to ${newRole === 'worker' ? 'Worker' : 'Company'} Mode`);
+    if (currentUser) {
+      requestNotificationPermission(currentUser.uid, newRole).catch(() => {});
+    }
   };
 
   // Handle 1-Tap Job Application
@@ -221,6 +286,11 @@ export default function Home() {
 
       await setDoc(doc(db, 'applications', applicationId), application);
 
+      // Trigger push notification to the company!
+      dispatchApplicationNotification(application, job).catch((e) =>
+        console.warn('Application notification warning:', e)
+      );
+
       // Trigger Confetti
       try {
         confetti({
@@ -239,6 +309,36 @@ export default function Home() {
     }
   };
 
+  // Open Maps Agent helper
+  const handleOpenMapsAgent = (venue?: string, location?: string) => {
+    setMapsVenue(venue || '');
+    setMapsLocation(location || '');
+    setShowMapsModal(true);
+  };
+
+  // Open Rating Review modal handlers
+  const handleRateWorker = (job: CateringJob, app: JobApplication) => {
+    setRatingModalData({
+      isOpen: true,
+      jobId: job.jobId,
+      jobTitle: job.title,
+      targetUserId: app.workerId,
+      targetUserName: app.workerName,
+      targetUserRole: 'worker',
+    });
+  };
+
+  const handleRateCompany = (job: CateringJob, app: JobApplication) => {
+    setRatingModalData({
+      isOpen: true,
+      jobId: job.jobId,
+      jobTitle: job.title,
+      targetUserId: job.companyId,
+      targetUserName: job.companyName,
+      targetUserRole: 'company',
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#eafaf1] via-white to-[#f5fbf7] text-[#1A1A1A] flex flex-col font-sans selection:bg-[#00A651] selection:text-white pb-20 sm:pb-10">
       {/* Dynamic Announcement Banner if configured */}
@@ -248,7 +348,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Main App Header with Logo & 7-Click Secret Admin */}
+      {/* Main App Header with Dynamic Logo, Font, Role & Notifications */}
       <Header
         currentRole={currentRole}
         onRoleChange={handleRoleChange}
@@ -265,6 +365,9 @@ export default function Home() {
         }}
         onOpenAdmin={() => setShowAdminModal(true)}
         siteSettings={siteSettings}
+        unreadNotificationsCount={unreadNotificationsCount}
+        onOpenNotifications={() => setShowNotificationsModal(true)}
+        onOpenMapsAgent={() => handleOpenMapsAgent()}
       />
 
       {/* Toast Notification */}
@@ -404,6 +507,7 @@ export default function Home() {
             onRequireAuth={() => setShowAuthModal(true)}
             applyingJobId={applyingJobId}
             loading={loadingJobs}
+            onOpenMapsAgent={handleOpenMapsAgent}
           />
         )}
 
@@ -411,6 +515,7 @@ export default function Home() {
           <WorkerApplicationsView
             workerId={currentUser?.uid || ''}
             onBrowseJobs={() => setActiveTab('feed')}
+            onRateCompany={handleRateCompany}
           />
         )}
 
@@ -418,6 +523,7 @@ export default function Home() {
           <CompanyJobsView
             companyId={currentUser?.uid || ''}
             onOpenPostJob={() => setShowPostJobModal(true)}
+            onRateWorker={handleRateWorker}
           />
         )}
 
@@ -517,7 +623,9 @@ export default function Home() {
       <footer className="mt-auto py-6 border-t border-gray-200/80 bg-white/50 text-center text-xs text-gray-400">
         <div className="max-w-4xl mx-auto px-4 flex flex-col items-center gap-1.5">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-[#1A1A1A]">CaterCREW</span>
+            <span className="font-bold text-[#1A1A1A]">
+              {siteSettings?.logoText || 'CaterCREW'}
+            </span>
             <span>•</span>
             <span className="font-semibold tracking-wider uppercase text-[11px]">
               from PARTIME
@@ -527,7 +635,7 @@ export default function Home() {
             Simple catering job marketplace connecting event companies with verified catering stewards, servers & bartenders.
           </p>
           <div className="text-[10px] text-gray-400 mt-1">
-            Tip: Tap the CaterCREW logo 7 times consecutively for the Secret Admin portal.
+            Tip: Tap the {siteSettings?.logoText || 'CaterCREW'} logo 7 times consecutively for the Secret Admin portal.
           </div>
         </div>
       </footer>
@@ -587,6 +695,51 @@ export default function Home() {
         onSettingsUpdated={(settings) => {
           setSiteSettings(settings);
           showToast('Website settings saved to Firestore!');
+        }}
+      />
+
+      {/* 7. Real-Time Google Maps Transit & Venue Agent */}
+      <MapsAgentModal
+        isOpen={showMapsModal}
+        onClose={() => setShowMapsModal(false)}
+        initialVenue={mapsVenue}
+        initialLocation={mapsLocation}
+      />
+
+      {/* 8. Star Rating & Verified Review Modal */}
+      {ratingModalData && (
+        <RatingReviewModal
+          isOpen={ratingModalData.isOpen}
+          onClose={() => setRatingModalData(null)}
+          jobId={ratingModalData.jobId}
+          jobTitle={ratingModalData.jobTitle}
+          targetUserId={ratingModalData.targetUserId}
+          targetUserName={ratingModalData.targetUserName}
+          targetUserRole={ratingModalData.targetUserRole}
+          fromUserId={currentUser?.uid || 'guest'}
+          fromUserName={
+            currentUser?.displayName ||
+            (currentRole === 'worker'
+              ? workerProfile?.name || 'Catering Worker'
+              : companyProfile?.companyName || 'Catering Company')
+          }
+          fromUserRole={currentRole === 'company' ? 'company' : 'worker'}
+          onSuccess={() => {
+            showToast('Rating and review published successfully!');
+            setRatingModalData(null);
+          }}
+        />
+      )}
+
+      {/* 9. Push Notifications Center Modal */}
+      <NotificationCenterModal
+        isOpen={showNotificationsModal}
+        onClose={() => setShowNotificationsModal(false)}
+        userId={currentUser?.uid}
+        role={currentRole === 'company' ? 'company' : 'worker'}
+        onNavigateJob={(jobId) => {
+          setActiveTab('feed');
+          setShowNotificationsModal(false);
         }}
       />
     </div>

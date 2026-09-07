@@ -59,6 +59,8 @@ export function AdminModal({
 
   // Settings form
   const [logoUrl, setLogoUrl] = useState(siteSettings?.logoUrl || '');
+  const [logoText, setLogoText] = useState(siteSettings?.logoText || 'CaterCREW');
+  const [fontFamily, setFontFamily] = useState(siteSettings?.fontFamily || 'Plus Jakarta Sans');
   const [faviconUrl, setFaviconUrl] = useState(siteSettings?.faviconUrl || '');
   const [announcement, setAnnouncement] = useState(siteSettings?.announcement || '');
   const [savingSettings, setSavingSettings] = useState(false);
@@ -95,6 +97,8 @@ export function AdminModal({
       if (settingsSnap.exists()) {
         const s = settingsSnap.data() as WebsiteSettings;
         setLogoUrl(s.logoUrl || '');
+        setLogoText(s.logoText || 'CaterCREW');
+        setFontFamily(s.fontFamily || 'Plus Jakarta Sans');
         setFaviconUrl(s.faviconUrl || '');
         setAnnouncement(s.announcement || '');
       }
@@ -184,6 +188,8 @@ export function AdminModal({
     try {
       const newSettings: WebsiteSettings = {
         logoUrl: logoUrl.trim(),
+        logoText: logoText.trim() || 'CaterCREW',
+        fontFamily: fontFamily.trim() || 'Plus Jakarta Sans',
         faviconUrl: faviconUrl.trim(),
         announcement: announcement.trim(),
       };
@@ -543,33 +549,128 @@ export function AdminModal({
 
             {/* TAB CONTENT: WEBSITE SETTINGS */}
             {activeTab === 'settings' && (
-              <form onSubmit={handleSaveSettings} className="space-y-3.5 text-xs">
-                <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-emerald-900 text-xs">
-                  <strong>Website Branding Panel</strong>: Update the live logo, favicon, and announcement across all devices in real time.
+              <form onSubmit={handleSaveSettings} className="space-y-4 text-xs">
+                <div className="bg-emerald-50 p-3.5 rounded-xl border border-emerald-200 text-emerald-900 text-xs flex items-center justify-between">
+                  <div>
+                    <strong>Header Branding Customization</strong>: Change website top-left logo and typography in real time.
+                  </div>
                 </div>
 
                 {settingsSuccess && (
-                  <div className="p-2.5 bg-emerald-100 text-emerald-800 rounded-xl font-bold flex items-center gap-1.5">
+                  <div className="p-2.5 bg-emerald-100 text-emerald-800 rounded-xl font-bold flex items-center gap-1.5 animate-in fade-in">
                     <CheckCircle className="w-4 h-4" />
-                    <span>Branding settings updated successfully!</span>
+                    <span>Branding settings updated successfully and saved to Firestore!</span>
                   </div>
                 )}
 
+                {/* Live Preview of Header Top-Left Branding */}
+                <div className="p-3 bg-gray-100/80 rounded-2xl border border-gray-200">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-2">
+                    Live Top-Left Corner Preview
+                  </span>
+                  <div className="bg-white p-3 rounded-xl border border-gray-200 flex items-center justify-between shadow-xs">
+                    <div className="flex items-center gap-2.5">
+                      {logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={logoUrl}
+                          alt="Logo Preview"
+                          className="w-8 h-8 rounded-xl object-contain border border-gray-200"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-xl bg-[#00A651] text-white flex items-center justify-center shadow-xs">
+                          <Sparkles className="w-4 h-4" />
+                        </div>
+                      )}
+                      <div>
+                        <div
+                          className="text-base font-black tracking-tight"
+                          style={{ fontFamily: fontFamily || 'sans-serif' }}
+                        >
+                          {logoText || 'CaterCREW'}
+                        </div>
+                        <span className="text-[9px] font-bold tracking-wider uppercase text-gray-400 block -mt-1">
+                          from PARTIME
+                        </span>
+                      </div>
+                    </div>
+
+                    <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                      Font: {fontFamily}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Font Selector */}
                 <div>
                   <label className="block font-bold text-gray-800 mb-1">
-                    Dynamic Logo Image URL
+                    Website Top-Left Brand Font
+                  </label>
+                  <select
+                    id="settings-font-family"
+                    value={fontFamily}
+                    onChange={(e) => setFontFamily(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-[#00A651] font-semibold outline-none"
+                  >
+                    <option value="Plus Jakarta Sans">Plus Jakarta Sans (Modern Clean App - Default)</option>
+                    <option value="Playfair Display">Playfair Display (Luxury & High-End Banquet Serif)</option>
+                    <option value="Poppins">Poppins (Friendly & Rounded Geometric)</option>
+                    <option value="Space Grotesk">Space Grotesk (Tech & Contemporary)</option>
+                    <option value="Montserrat">Montserrat (Bold Architectural)</option>
+                    <option value="Syne">Syne (Creative Avant-Garde)</option>
+                    <option value="Cinzel">Cinzel (Royal Classical Catering)</option>
+                    <option value="Oswald">Oswald (Bold Impact Condensed)</option>
+                  </select>
+                  <span className="text-[10px] text-gray-400 mt-1 block">
+                    Instantly changes the typography of CaterCrew in the top navigation bar.
+                  </span>
+                </div>
+
+                {/* Logo Text Customization */}
+                <div>
+                  <label className="block font-bold text-gray-800 mb-1">
+                    Brand Name / Logo Text
+                  </label>
+                  <input
+                    id="settings-logo-text"
+                    type="text"
+                    placeholder="e.g. CaterCREW or CaterCrew Pro"
+                    value={logoText}
+                    onChange={(e) => setLogoText(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-[#00A651] outline-none"
+                  />
+                </div>
+
+                {/* Logo URL Customization */}
+                <div>
+                  <label className="block font-bold text-gray-800 mb-1">
+                    Dynamic Logo Icon / Image URL
                   </label>
                   <input
                     id="settings-logo-url"
                     type="url"
-                    placeholder="https://example.com/logo.png"
+                    placeholder="https://example.com/catercrew-logo.png"
                     value={logoUrl}
                     onChange={(e) => setLogoUrl(e.target.value)}
                     className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-[#00A651] outline-none"
                   />
-                  <span className="text-[10px] text-gray-400 mt-0.5 block">
-                    Leave empty to use default CaterCrew Chef Hat icon logo.
-                  </span>
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <span className="text-[10px] text-gray-400">Presets:</span>
+                    <button
+                      type="button"
+                      onClick={() => setLogoUrl('')}
+                      className="text-[10px] px-2 py-0.5 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold"
+                    >
+                      Default Chef Hat
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLogoUrl('https://images.unsplash.com/photo-1577219491135-ce391730fb2c?auto=format&fit=crop&w=120&h=120&q=80')}
+                      className="text-[10px] px-2 py-0.5 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold"
+                    >
+                      Chef Cloche Photo
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -588,7 +689,7 @@ export function AdminModal({
 
                 <div>
                   <label className="block font-bold text-gray-800 mb-1">
-                    Top Announcement Banner Text
+                    Top Announcement Banner Text (Optional)
                   </label>
                   <input
                     id="settings-announcement"

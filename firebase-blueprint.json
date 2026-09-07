@@ -98,8 +98,46 @@
       "type": "object",
       "properties": {
         "logoUrl": { "type": "string" },
-        "faviconUrl": { "type": "string" }
+        "faviconUrl": { "type": "string" },
+        "fontFamily": { "type": "string" },
+        "announcement": { "type": "string" }
       }
+    },
+    "reviews": {
+      "title": "Review and Rating",
+      "description": "Ratings and feedback between companies and workers post gig",
+      "type": "object",
+      "properties": {
+        "reviewId": { "type": "string" },
+        "jobId": { "type": "string" },
+        "jobTitle": { "type": "string" },
+        "fromUserId": { "type": "string" },
+        "fromUserName": { "type": "string" },
+        "fromUserRole": { "type": "string", "enum": ["worker", "company"] },
+        "targetUserId": { "type": "string" },
+        "targetUserRole": { "type": "string", "enum": ["worker", "company"] },
+        "rating": { "type": "number" },
+        "review": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["reviewId", "fromUserId", "targetUserId", "rating"]
+    },
+    "notifications": {
+      "title": "App Notification",
+      "description": "Push and in-app notifications for urgent gigs and job applications",
+      "type": "object",
+      "properties": {
+        "notificationId": { "type": "string" },
+        "type": { "type": "string", "enum": ["urgent_job", "job_application", "application_status", "review_received"] },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "jobId": { "type": "string" },
+        "targetUserId": { "type": "string" },
+        "targetRole": { "type": "string", "enum": ["worker", "company", "all"] },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["notificationId", "title", "body", "createdAt"]
     }
   }
 }

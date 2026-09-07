@@ -11,20 +11,25 @@ import {
   MessageCircle,
   Phone,
   ShieldCheck,
-  Award
+  Award,
+  ChevronDown,
+  ChevronUp,
+  Quote
 } from 'lucide-react';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { WorkerProfile } from '../lib/types';
+import { WorkerProfile, Review } from '../lib/types';
 
 export function WorkersDirectory() {
   const [workers, setWorkers] = useState<WorkerProfile[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSkill, setSelectedSkill] = useState<string>('all');
+  const [expandedReviewsWorkerId, setExpandedReviewsWorkerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(
+    const unsubWorkers = onSnapshot(
       collection(db, 'workers'),
       (snapshot) => {
         const list: WorkerProfile[] = [];
@@ -38,8 +43,34 @@ export function WorkersDirectory() {
       }
     );
 
-    return () => unsubscribe();
+    // Fetch all worker reviews
+    const qReviews = query(collection(db, 'reviews'), where('targetUserRole', '==', 'worker'));
+    const unsubReviews = onSnapshot(
+      qReviews,
+      (snapshot) => {
+        const revList: Review[] = [];
+        snapshot.forEach((d) => revList.push(d.data() as Review));
+        setReviews(revList);
+      },
+      (err) => {
+        console.warn('Reviews listener error:', err);
+      }
+    );
+
+    return () => {
+      unsubWorkers();
+      unsubReviews();
+    };
   }, []);
+
+  const reviewsByWorker = useMemo(() => {
+    const map: Record<string, Review[]> = {};
+    reviews.forEach((r) => {
+      if (!map[r.targetUserId]) map[r.targetUserId] = [];
+      map[r.targetUserId].push(r);
+    });
+    return map;
+  }, [reviews]);
 
   const allSkills = useMemo(() => {
     const set = new Set<string>();
@@ -75,7 +106,7 @@ export function WorkersDirectory() {
           <h2 className="text-lg font-black text-[#1A1A1A]">Available Catering Staff</h2>
         </div>
         <p className="text-xs text-gray-500">
-          Browse verified stewards, bartenders, and banquet servers. Contact directly on WhatsApp for immediate event booking.
+          Browse verified stewards, bartenders, and banquet servers with company ratings and reviews.
         </p>
       </div>
 
@@ -98,22 +129,22 @@ export function WorkersDirectory() {
           <button
             type="button"
             onClick={() => setSelectedSkill('all')}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+            className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
               selectedSkill === 'all'
-                ? 'bg-[#1A1A1A] text-white shadow-xs'
+                ? 'bg-[#1A1A1A] text-white'
                 : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
             }`}
           >
-            All Staff ({workers.length})
+            All Skills ({workers.length})
           </button>
           {allSkills.map((sk) => (
             <button
               key={sk}
               type="button"
               onClick={() => setSelectedSkill(sk)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+              className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
                 selectedSkill === sk
-                  ? 'bg-[#00A651] text-white shadow-xs'
+                  ? 'bg-[#00A651] text-white'
                   : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
               }`}
             >
@@ -123,10 +154,10 @@ export function WorkersDirectory() {
         </div>
       </div>
 
-      {/* Workers Grid */}
+      {/* Worker List */}
       {loading ? (
         <div className="bg-white rounded-2xl p-8 border border-gray-200 text-center text-xs text-gray-500">
-          Loading worker directory...
+          Loading catering crew...
         </div>
       ) : filteredWorkers.length === 0 ? (
         <div className="bg-white rounded-2xl p-8 border border-dashed border-gray-300 text-center text-xs text-gray-500">
@@ -139,8 +170,21 @@ export function WorkersDirectory() {
             const waUrl = `https://wa.me/${
               cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone || '919876543210'
             }?text=${encodeURIComponent(
-              `Hi ${w.name}, we saw your profile on CaterCrew! We have an upcoming catering event and would like to hire you. Are you available?`
+              `Hi ${w.name}, we saw your verified profile on CaterCrew! We have an upcoming event shift and would like to hire you.`
             )}`;
+
+            const workerReviews = reviewsByWorker[w.uid] || [];
+            const reviewCount = workerReviews.length;
+            const avgRating =
+              reviewCount > 0
+                ? (
+                    workerReviews.reduce((acc, r) => acc + r.rating, 0) / reviewCount
+                  ).toFixed(1)
+                : w.rating
+                ? w.rating.toFixed(1)
+                : '5.0';
+
+            const isReviewsExpanded = expandedReviewsWorkerId === w.uid;
 
             return (
               <div
@@ -179,10 +223,10 @@ export function WorkersDirectory() {
                     <div className="text-right shrink-0">
                       <div className="flex items-center gap-1 text-xs font-bold text-amber-600 justify-end">
                         <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                        <span>{w.rating || 4.9}</span>
+                        <span>{avgRating}</span>
                       </div>
                       <span className="text-[10px] text-gray-400">
-                        {w.completedGigs || 20}+ gigs
+                        {reviewCount > 0 ? `${reviewCount} reviews` : `${w.completedGigs || 12} gigs`}
                       </span>
                     </div>
                   </div>
@@ -220,6 +264,45 @@ export function WorkersDirectory() {
                       <span className="font-semibold text-gray-800">{w.availability}</span>
                     </div>
                   </div>
+
+                  {/* Verified Reviews Section / Accordion */}
+                  {reviewCount > 0 && (
+                    <div className="mb-3 pt-2 border-t border-gray-100">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedReviewsWorkerId(isReviewsExpanded ? null : w.uid)}
+                        className="w-full flex items-center justify-between text-xs font-bold text-gray-700 hover:text-[#00A651] transition py-1"
+                      >
+                        <span className="flex items-center gap-1">
+                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                          <span>Verified Company Reviews ({reviewCount})</span>
+                        </span>
+                        {isReviewsExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </button>
+
+                      {isReviewsExpanded && (
+                        <div className="mt-2 space-y-2 max-h-48 overflow-y-auto pr-1">
+                          {workerReviews.map((rev) => (
+                            <div key={rev.reviewId} className="bg-gray-50 p-2.5 rounded-xl border border-gray-200/70 text-xs">
+                              <div className="flex items-center justify-between gap-1 mb-1">
+                                <span className="font-bold text-gray-900 truncate">{rev.fromUserName}</span>
+                                <div className="flex items-center gap-0.5 text-amber-500">
+                                  {Array.from({ length: rev.rating }).map((_, i) => (
+                                    <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                  ))}
+                                </div>
+                              </div>
+                              <p className="text-gray-600 text-[11px] leading-relaxed italic">&ldquo;{rev.review}&rdquo;</p>
+                              <div className="mt-1 text-[10px] text-gray-400 flex items-center justify-between">
+                                <span>Gig: {rev.jobTitle}</span>
+                                <span>{new Date(rev.createdAt).toLocaleDateString()}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* WhatsApp Contact Action */}

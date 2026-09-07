@@ -21,6 +21,7 @@ export interface WorkerProfile {
   profilePhotoUrl?: string;
   bio?: string;
   rating?: number;
+  reviewsCount?: number;
   completedGigs?: number;
 }
 
@@ -36,6 +37,8 @@ export interface CompanyProfile {
   description: string;
   logoUrl?: string;
   verified?: boolean;
+  rating?: number;
+  reviewsCount?: number;
 }
 
 export interface CateringJob {
@@ -45,6 +48,8 @@ export interface CateringJob {
   companyPhone: string;
   title: string;
   eventType: string;
+  jobRole?: string; // 'waiter' | 'bartender' | 'buffet' | 'captain' | 'kitchen' | 'other'
+  roleType?: string;
   date: string;
   time: string;
   location: string;
@@ -80,6 +85,36 @@ export interface JobApplication {
 
 export interface WebsiteSettings {
   logoUrl: string;
+  logoText?: string;
+  fontFamily?: string;
   faviconUrl: string;
   announcement?: string;
+}
+
+export interface Review {
+  reviewId: string;
+  jobId: string;
+  jobTitle: string;
+  fromUserId: string;
+  fromUserName: string;
+  fromUserRole: 'worker' | 'company';
+  targetUserId: string;
+  targetUserRole: 'worker' | 'company';
+  rating: number; // 1 to 5
+  review: string;
+  tags?: string[];
+  createdAt: string;
+}
+
+export interface AppNotification {
+  notificationId: string;
+  type: 'urgent_job' | 'job_application' | 'application_status' | 'review_received';
+  title: string;
+  body: string;
+  jobId?: string;
+  targetUserId?: string;
+  targetRole?: 'worker' | 'company' | 'all';
+  isRead: boolean;
+  createdAt: string;
+  link?: string;
 }
